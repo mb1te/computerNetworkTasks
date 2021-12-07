@@ -5,7 +5,6 @@ import java.math.*;
 import java.util.regex.*;
 
 public class JavaStaticInitializerBlock {
-
 	static int B, H;
 	static boolean flag;
 	
@@ -29,4 +28,3 @@ public class JavaStaticInitializerBlock {
 		}//end of main
 
 }//end of class
-
