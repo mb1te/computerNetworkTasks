@@ -8,6 +8,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 /**
  * Servlet implementation class Main
@@ -28,18 +29,43 @@ public class MainServlet extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		ArrayList<Integer> answer = new ArrayList<>();
-		if (request.getParameter("L") != null && request.getParameter("R") != null) {
-			int L = Integer.parseInt(request.getParameter("L"));
-			int R = Integer.parseInt(request.getParameter("R"));
-			int x = 11 * 13 * 17;
-
-			for (int i = L; i <= R; i++) {
-				if (i % x == 0) answer.add(i);
-			}
-
+		HttpSession session = request.getSession(false);
+		if (session == null) {
+			session = request.getSession();
+			ArrayList<String> taskIds = new ArrayList<>();
+			session.setAttribute("tasks", taskIds);
 		}
-		request.getSession().setAttribute("answer", answer);
+
+
+		String L = request.getParameter("L");
+		String R = request.getParameter("R");
+		String Step = request.getParameter("step");
+
+		if (L != null && R != null && Step != null) {
+			try(Socket socket= new Socket("127.0.0.1", 1243);
+				Scanner socketIn = new Scanner(socket.getInputStream());
+				PrintWriter out = new PrintWriter(socket.getOutputStream());) {
+				out.println("Add task " + L + " " + R + " " + Step);
+				out.flush();
+
+				String serverResponse = socketIn.nextLine();
+
+				if (serverResponse == "Failed") {
+					request.setAttribute("submitResult", "error");
+				}
+				else {
+					request.setAttribute("submitResult", "success");
+
+					ArrayList<String> taskIds = (ArrayList<String>) session.getAttribute("tasks");
+					taskIds.add(serverResponse.split(" ")[1]);
+					session.setAttribute("tasks", taskIds);
+				}
+
+			} catch (IOException e) {
+				request.setAttribute("submitResult", "error");
+				e.printStackTrace();
+			}
+		}
 		getServletContext().getRequestDispatcher("/index.jsp").forward(request, response);
 	}
 

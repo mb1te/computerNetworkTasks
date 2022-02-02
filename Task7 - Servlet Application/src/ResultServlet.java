@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Scanner;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -16,14 +17,14 @@ import javax.servlet.http.HttpSession;
 /**
  * Servlet implementation class Main
  */
-@WebServlet("/clients")
-public class ClientsServlet extends HttpServlet {
+@WebServlet("/result")
+public class ResultServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public ClientsServlet() {
+    public ResultServlet() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -39,36 +40,33 @@ public class ClientsServlet extends HttpServlet {
             session.setAttribute("tasks", taskIds);
         }
 
-        String ClientID = request.getParameter("disconnect");
-        if (ClientID != null) {
-            try(Socket socket= new Socket("127.0.0.1", 1243);
-                Scanner socketIn = new Scanner(socket.getInputStream());
-                PrintWriter out = new PrintWriter(socket.getOutputStream());) {
-                out.println("Disconnect worker " + ClientID);
-                out.flush();
-                socketIn.nextLine();
-            }
-            catch(IOException e) {
-                request.setAttribute("connectError", true);
-            }
-        }
+        String TaskID = request.getParameter("id");
 
-        try(Socket socket= new Socket("127.0.0.1", 1243);
-            Scanner socketIn = new Scanner(socket.getInputStream());
-            PrintWriter out = new PrintWriter(socket.getOutputStream());) {
-            out.println("Get workers");
-            out.flush();
-            ArrayList<String[]> clients = new ArrayList<>();
-            while(socketIn.hasNext()) {
-                String[] s = socketIn.nextLine().split(" ");
-                clients.add(s);
+        if (TaskID != null) {
+            try (Socket socket = new Socket("127.0.0.1", 1243);
+                 Scanner socketIn = new Scanner(socket.getInputStream());
+                 PrintWriter out = new PrintWriter(socket.getOutputStream());) {
+                out.println("Get result " + TaskID);
+                out.flush();
+                String serverResponse = socketIn.nextLine();
+                if (Objects.equals(serverResponse, "No Task")) {
+                    request.setAttribute("status", "no task");
+                } else if (Objects.equals(serverResponse, "Not Ready")) {
+                    request.setAttribute("status", "not ready");
+                } else {
+                    ArrayList<String> results = new ArrayList<>();
+                    while (socketIn.hasNext()) {
+                        String s = socketIn.nextLine();
+                        results.add(s);
+                    }
+                    request.setAttribute("results", results);
+                    request.setAttribute("status", "success");
+                }
+            } catch (IOException e) {
+                request.setAttribute("status", "connect error");
             }
-            request.setAttribute("clients", clients);
         }
-        catch(IOException e) {
-            request.setAttribute("connectError", true);
-        }
-        getServletContext().getRequestDispatcher("/clients.jsp").forward(request, response);
+        getServletContext().getRequestDispatcher("/result.jsp").forward(request, response);
     }
 
     /**

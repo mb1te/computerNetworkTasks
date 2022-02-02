@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Scanner;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -16,14 +17,14 @@ import javax.servlet.http.HttpSession;
 /**
  * Servlet implementation class Main
  */
-@WebServlet("/clients")
-public class ClientsServlet extends HttpServlet {
+@WebServlet("/tasks")
+public class TasksServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public ClientsServlet() {
+    public TasksServlet() {
         super();
         // TODO Auto-generated constructor stub
     }
@@ -39,36 +40,24 @@ public class ClientsServlet extends HttpServlet {
             session.setAttribute("tasks", taskIds);
         }
 
-        String ClientID = request.getParameter("disconnect");
-        if (ClientID != null) {
-            try(Socket socket= new Socket("127.0.0.1", 1243);
-                Scanner socketIn = new Scanner(socket.getInputStream());
-                PrintWriter out = new PrintWriter(socket.getOutputStream());) {
-                out.println("Disconnect worker " + ClientID);
-                out.flush();
-                socketIn.nextLine();
-            }
-            catch(IOException e) {
-                request.setAttribute("connectError", true);
-            }
-        }
-
         try(Socket socket= new Socket("127.0.0.1", 1243);
             Scanner socketIn = new Scanner(socket.getInputStream());
             PrintWriter out = new PrintWriter(socket.getOutputStream());) {
-            out.println("Get workers");
+            out.println("Get tasks");
             out.flush();
-            ArrayList<String[]> clients = new ArrayList<>();
+            ArrayList<String[]> tasks = new ArrayList<>();
+
+            ArrayList<String> curSessionTasks = (ArrayList<String>) session.getAttribute("tasks");
             while(socketIn.hasNext()) {
                 String[] s = socketIn.nextLine().split(" ");
-                clients.add(s);
+                if (curSessionTasks.stream().anyMatch((x) -> Objects.equals(x, s[0]))) tasks.add(s);
             }
-            request.setAttribute("clients", clients);
+            request.setAttribute("tasks", tasks);
         }
         catch(IOException e) {
             request.setAttribute("connectError", true);
         }
-        getServletContext().getRequestDispatcher("/clients.jsp").forward(request, response);
+        getServletContext().getRequestDispatcher("/tasks.jsp").forward(request, response);
     }
 
     /**
